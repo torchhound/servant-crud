@@ -1,40 +1,68 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Main where
 
-import Servant.API
-import Servant.Server
-import Data.Aeson
-import GHC.Generics
-import Network.Wai
+import Servant
+import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Logger (runStderrLoggingT)
+import Database.Persist.Sqlite ( ConnectionPool, createSqlitePool
+                               , runSqlPool, runSqlPersistMPool
+                               , runMigration, selectFirst, (==.)
+                               , insert, entityVal)
+import Data.String.Conversions (cs)
+import Data.Text (Text)
 import Network.Wai.Handler.Warp
-import Data.Proxy
 
-type Ccreate = "create" :> Put '[JSON] [Document]
---type Cread = "read" :> Capture "uuid" Integer :> Get '[JSON] [Document]
-type Cread = "read" :> Get '[JSON] [Document]
-type Cupdate = "update" :> Capture "uuid" Integer :> Patch '[JSON] [Document]
-type Cdelete = "delete" :> Capture "uuid" Integer :> Delete '[JSON] [Document]
+import CrudApi
+import Model
 
-data Document = Document {document :: String} deriving (Show, Generic)
+server :: ConnectionPool -> Server CrudApi
+server pool = 
+  _documentPost :<|> _documentGet :<|> _documentPatch :<|> _documentDelete
+  where
+    _documentPost newDocument = liftIO $ documentPost newDocument
+    _documentGet title = liftIO $ documentGet title
+    _documentPatch patchDocument = liftIO $ documentPatch patchDocument
+    _documentDelete deleteDocument = liftIO $ documentDelete deleteDocument
 
-instance ToJSON Document
+    documentPost :: Document -> IO (Maybe (Key Document))
+    documentPost newDocument = flip runSqlPersistMPool pool $ do
+      exists <- selectFirst [Title ==. (title newDocument)] []
+      case exists of 
+        Nothing -> Just <$> insert newDocument
+        Just _ -> return Nothing
 
-docs :: [Document]
-docs = [Document "Test"]
+    documentGet :: Text -> IO (Maybe Document)
+    documentGet title = flip runSqlPersistMPool pool $ do
+      _Document <- selectFirst [Title ==. title] []
+      return $ entityVal <$> _Document
 
-server :: Server Cread
-server = return docs
+    documentPatch :: Document -> IO ()
+    documentPatch patchDocument = flip runSqlPersistMPool pool $ do
+      updateWhere [Title ==. patchDocument.title] [Document *=. patchDocument]
 
-userAPI :: Proxy Cread
-userAPI = Proxy
+    documentDelete :: Document -> IO ()
+    documentDelete deleteDocument = flip runSqlPersistMPool pool $ do
+      deleteWhere [Document ==. deleteDocument]
 
-app :: Application
-app = serve userAPI server
+app :: ConnectionPool -> Application
+app pool = serve documentApi $ server pool
+
+mkApp :: FilePath -> IO Application
+mkApp file = do
+  pool <- runStderrLoggingT $ do
+    createSqlitePool (cs file) 5
+
+  runSqlPool (runMigration migrateAll) pool
+  return $ app pool
+
+run :: FilePath -> IO ()
+run file = run 8081 =<< mkApp file
 
 main :: IO ()
-main = run 8081 app
+main = run "sqlite.db"
