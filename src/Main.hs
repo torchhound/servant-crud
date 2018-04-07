@@ -36,24 +36,24 @@ server pool = _documentPost
 
     documentPost :: Document -> IO (Maybe (Key Document))
     documentPost newDocument = flip runSqlPersistMPool pool $ do
-      exists <- selectFirst [UniqueTitle ==. (title newDocument)] []
+      exists <- selectFirst [DocumentTitle ==. (documentTitle newDocument)] []
       case exists of 
         Nothing -> Just <$> insert newDocument
         Just _ -> return Nothing
 
     documentGet :: Text -> IO (Maybe Document)
     documentGet title = flip runSqlPersistMPool pool $ do
-      _Document <- selectFirst [UniqueTitle ==. title] []
+      _Document <- selectFirst [DocumentTitle ==. title] []
       return $ entityVal <$> _Document
 
     documentPatch :: Document -> IO (Handler Text)
     documentPatch patchDocument = flip runSqlPersistMPool pool $ do
-      updateWhere [UniqueTitle ==. (title patchDocument)] [Document *=. patchDocument]
+      updateWhere [DocumentTitle ==. (documentTitle patchDocument)] [Document *=. patchDocument]
       return "Document Patched"
 
     documentDelete :: Document -> IO (Handler Text)
     documentDelete deleteDocument = flip runSqlPersistMPool pool $ do
-      deleteWhere [UniqueTitle ==. (title deleteDocument)]
+      deleteWhere [DocumentTitle ==. (documentTitle deleteDocument)]
       return "Document Deleted"
 
 app :: ConnectionPool -> Application
