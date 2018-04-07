@@ -13,17 +13,21 @@ import Control.Monad.Logger (runStderrLoggingT)
 import Database.Persist.Sqlite ( ConnectionPool, createSqlitePool
                                , runSqlPool, runSqlPersistMPool
                                , runMigration, selectFirst, (==.)
-                               , insert, entityVal)
+                               , insert, entityVal, deleteWhere
+                               , updateWhere, (*=.))
 import Data.String.Conversions (cs)
 import Data.Text (Text)
-import Network.Wai.Handler.Warp
+import Network.Wai.Handler.Warp as Warp
 
 import CrudApi
 import Model
 
 server :: ConnectionPool -> Server CrudApi
-server pool = 
-  _documentPost :<|> _documentGet :<|> _documentPatch :<|> _documentDelete
+server pool = _documentPost 
+  :<|> _documentGet 
+  :<|> _documentPatch 
+  :<|> _documentDelete
+
   where
     _documentPost newDocument = liftIO $ documentPost newDocument
     _documentGet title = liftIO $ documentGet title
@@ -32,26 +36,28 @@ server pool =
 
     documentPost :: Document -> IO (Maybe (Key Document))
     documentPost newDocument = flip runSqlPersistMPool pool $ do
-      exists <- selectFirst [Title ==. (title newDocument)] []
+      exists <- selectFirst [UniqueTitle ==. (title newDocument)] []
       case exists of 
         Nothing -> Just <$> insert newDocument
         Just _ -> return Nothing
 
     documentGet :: Text -> IO (Maybe Document)
     documentGet title = flip runSqlPersistMPool pool $ do
-      _Document <- selectFirst [Title ==. title] []
+      _Document <- selectFirst [UniqueTitle ==. title] []
       return $ entityVal <$> _Document
 
-    documentPatch :: Document -> IO ()
+    documentPatch :: Document -> IO (Handler Text)
     documentPatch patchDocument = flip runSqlPersistMPool pool $ do
-      updateWhere [Title ==. patchDocument.title] [Document *=. patchDocument]
+      updateWhere [UniqueTitle ==. (title patchDocument)] [Document *=. patchDocument]
+      return "Document Patched"
 
-    documentDelete :: Document -> IO ()
+    documentDelete :: Document -> IO (Handler Text)
     documentDelete deleteDocument = flip runSqlPersistMPool pool $ do
-      deleteWhere [Document ==. deleteDocument]
+      deleteWhere [UniqueTitle ==. (title deleteDocument)]
+      return "Document Deleted"
 
 app :: ConnectionPool -> Application
-app pool = serve documentApi $ server pool
+app pool = serve documentAPI $ server pool
 
 mkApp :: FilePath -> IO Application
 mkApp file = do
@@ -61,8 +67,8 @@ mkApp file = do
   runSqlPool (runMigration migrateAll) pool
   return $ app pool
 
-run :: FilePath -> IO ()
-run file = run 8081 =<< mkApp file
+sprint :: FilePath -> IO ()
+sprint file = Warp.run 8081 =<< mkApp file
 
 main :: IO ()
-main = run "sqlite.db"
+main = sprint "sqlite.db"

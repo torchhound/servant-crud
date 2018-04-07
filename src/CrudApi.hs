@@ -13,10 +13,10 @@ import Database.Persist
 
 import Model
 
-type CrudApi = "create" :> Put '[JSON] (Maybe (Key Document))
-	:<|> "read" :> Capture "title" Integer :> Get '[JSON] (Maybe Document)
-	:<|> "update" :> Capture "title" Integer :> Patch '[JSON] (Maybe Document)
-	:<|> "delete" :> Capture "title" Integer :> Delete '[JSON] (Maybe Document)
+type CrudApi = "create" :> ReqBody '[JSON] Document :> Put '[JSON] (Maybe (Key Document))
+  :<|> "read" :> Capture "title" Text :> Get '[JSON] (Maybe Document)
+  :<|> "update" :> Capture "title" Text
+  :<|> "delete" :> Capture "title" Text
 
 documentAPI :: Proxy CrudApi
 documentAPI = Proxy

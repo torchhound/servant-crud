@@ -1,13 +1,12 @@
-{-# LANGUAGE EmptyDataDecls             #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE GADTs                      #-}
+{-# LANGUAGE EmptyDataDecls #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE QuasiQuotes                #-}
-{-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Model where
 
@@ -15,12 +14,12 @@ import Data.Aeson
 import Data.Text
 import Database.Persist.TH
 
-share [mkPersist sqlSettings, mkMIgrate "migrateAll"] [persistLowerCase|
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 Document
   title Text
   body Text
-  UniqueName uuid
-  deriving Eq Read Show Generic
+  UniqueTitle title
+  deriving Eq Read Show
 |]
 
 instance FromJSON Document where
