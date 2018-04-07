@@ -32,7 +32,7 @@ server pool = _documentPost
     _documentPost newDocument = liftIO $ documentPost newDocument
     _documentGet title = liftIO $ documentGet title
     _documentPatch patchDocument = liftIO $ documentPatch patchDocument
-    _documentDelete deleteDocument = liftIO $ documentDelete deleteDocument
+    _documentDelete title = liftIO $ documentDelete title
 
     documentPost :: Document -> IO (Maybe (Key Document))
     documentPost newDocument = flip runSqlPersistMPool pool $ do
@@ -46,18 +46,18 @@ server pool = _documentPost
       _Document <- selectFirst [DocumentTitle ==. title] []
       return $ entityVal <$> _Document
 
-    documentPatch :: Document -> IO (Handler Text)
+    documentPatch :: Document -> IO ([Char])
     documentPatch patchDocument = flip runSqlPersistMPool pool $ do
-      updateWhere [DocumentTitle ==. (documentTitle patchDocument)] [Document *=. patchDocument]
+      updateWhere [DocumentTitle ==. (documentTitle patchDocument)] [DocumentTitle *=. (documentTitle patchDocument), DocumentBody *=. (documentBody patchDocument)]
       return "Document Patched"
 
-    documentDelete :: Document -> IO (Handler Text)
-    documentDelete deleteDocument = flip runSqlPersistMPool pool $ do
-      deleteWhere [DocumentTitle ==. (documentTitle deleteDocument)]
+    documentDelete :: Text -> IO ([Char])
+    documentDelete title = flip runSqlPersistMPool pool $ do
+      deleteWhere [DocumentTitle ==. title]
       return "Document Deleted"
 
 app :: ConnectionPool -> Application
-app pool = serve documentAPI $ server pool
+app pool = serve documentApi $ server pool
 
 mkApp :: FilePath -> IO Application
 mkApp file = do

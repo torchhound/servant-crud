@@ -15,8 +15,8 @@ import Model
 
 type CrudApi = "create" :> ReqBody '[JSON] Document :> Put '[JSON] (Maybe (Key Document))
   :<|> "read" :> Capture "title" Text :> Get '[JSON] (Maybe Document)
-  :<|> "update" :> Capture "title" Text
-  :<|> "delete" :> Capture "title" Text
+  :<|> "update" :> ReqBody '[JSON] Document :> Patch '[JSON] [Char]
+  :<|> "delete" :> Capture "title" Text :> Delete '[JSON] [Char]
 
-documentAPI :: Proxy CrudApi
-documentAPI = Proxy
+documentApi :: Proxy CrudApi
+documentApi = Proxy
