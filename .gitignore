@@ -1,2 +1,5 @@
 .stack-work
 .swp
+sqlite.db
+sqlite.db-shm
+sqlite.db-wal
